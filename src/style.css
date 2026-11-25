@@ -226,13 +226,66 @@ h1 { font-size: clamp(40px, 6vw, 76px); font-weight: 800; letter-spacing: -0.035
   background: #1b2350;
   box-shadow: 0 0 0 1px var(--line), 0 40px 80px -30px rgba(0, 0, 0, 0.8);
 }
-.wash-overlay { position: absolute; inset: 0; display: grid; place-items: center; z-index: 2; pointer-events: none; }
-.wash-overlay > * { pointer-events: auto; }
-.wash-break { text-align: center; color: #10131c; pointer-events: none !important; }
-.wash-break .btn { pointer-events: auto; color: #10131c; background: rgba(255, 255, 255, 0.45); box-shadow: inset 0 0 0 1px rgba(16, 19, 28, 0.2); }
-.wash-title { font-size: clamp(22px, 3vw, 34px); font-weight: 800; letter-spacing: -0.02em; margin: 0; }
-.wash-detail { margin: 6px 0 4px; font-weight: 500; opacity: 0.8; padding: 0 16px; }
-.wash-count { font-size: clamp(40px, 6vw, 64px); font-weight: 800; margin: 0 0 10px; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+.wash-canvas { pointer-events: none; }
+.wash-back { z-index: 0; }
+/* The frosted glass: blurs the back canvas, like the app's NSVisualEffectView, with a light blue tint */
+.wash-frost {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(140, 199, 255, 0.22), rgba(51, 115, 217, 0.12)), rgba(235, 240, 248, 0.28);
+  backdrop-filter: blur(22px) saturate(1.4);
+  -webkit-backdrop-filter: blur(22px) saturate(1.4);
+}
+.wash-front { z-index: 2; }
+.wash-fx { z-index: 3; }
+.wash-overlay { position: absolute; inset: 0; display: grid; place-items: center; z-index: 4; pointer-events: none; }
+.wash-overlay > .btn { pointer-events: auto; }
+/* BreakCard in BreakShow.swift: 360×300, regular material, 26pt corners; scaled with the demo screen */
+.wash-card {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: 360px;
+  height: 300px;
+  box-sizing: border-box;
+  padding: 26px 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  border-radius: 26px;
+  color: #1d1d1f;
+  background: rgba(246, 246, 248, 0.72);
+  backdrop-filter: blur(30px) saturate(1.8);
+  -webkit-backdrop-filter: blur(30px) saturate(1.8);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25), 0 10px 48px rgba(0, 0, 0, 0.25);
+  transform-origin: 50% 50%;
+  pointer-events: auto;
+  text-align: center;
+}
+.ring { position: relative; width: 96px; height: 96px; flex: none; }
+.ring svg { width: 96px; height: 96px; transform: rotate(-90deg); overflow: visible; }
+.ring circle { fill: none; stroke-width: 6; }
+.ring-track { stroke: rgba(0, 0, 0, 0.12); }
+.ring-progress { stroke: url(#ring-grad); stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear; }
+.ring-inner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ring-inner .eye { width: 20px; height: 20px; transform: none; fill: none; stroke: rgba(60, 60, 67, 0.6); stroke-width: 2; }
+#wash-count { font: 700 30px/1.05 ui-rounded, "SF Pro Rounded", -apple-system, sans-serif; font-variant-numeric: tabular-nums; }
+.wash-title { margin: 0; font: 700 22px/1.1 ui-rounded, "SF Pro Rounded", -apple-system, sans-serif; letter-spacing: 0; }
+.wash-detail { margin: 0; font-size: 13px; line-height: 1.35; text-align: justify; color: #1d1d1f; }
+.wash-skip {
+  font: 500 13px/1 -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #1d1d1f;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.07);
+  cursor: pointer;
+}
+.wash-skip:hover { background: rgba(0, 0, 0, 0.12); }
 
 .features .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 44px; }
 .features article { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; }
@@ -324,3 +377,4 @@ h1 { font-size: clamp(40px, 6vw, 76px); font-weight: 800; letter-spacing: -0.035
   html { scroll-behavior: auto; }
   .hint { animation: none; }
 }
+.hero-fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }

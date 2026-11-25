@@ -84,16 +84,31 @@
       <div class="breaks-copy">
         <h2>He also makes you rest your eyes.</h2>
         <p>Every hour (or every 20, 30, 45 or 90 minutes, your call) the screen frosts over and he hoses it down while you look at something far away for 20 seconds. Step away from the Mac and the timer resets on its own.</p>
-        <p class="aside">Try it. Move your pointer over the screen to aim the water.</p>
+        <p class="aside">Try it. Press Esc or Skip to wipe the glass early.</p>
       </div>
       <div class="wash-stage" id="wash-stage">
         <div class="wash-overlay" id="wash-overlay">
           <button class="btn" id="wash-start" type="button">Take a 20‑second break</button>
-          <div class="wash-break" hidden>
-            <p class="wash-title">Rest your eyes</p>
-            <p class="wash-detail">Look at something far away and blink a few times.</p>
-            <p class="wash-count"><span id="wash-count">20</span>s</p>
-            <button class="btn btn-ghost btn-small" id="wash-skip" type="button">Skip (Esc)</button>
+          <div class="wash-card" hidden>
+            <div class="ring">
+              <svg viewBox="0 0 96 96" aria-hidden="true">
+                <defs>
+                  <linearGradient id="ring-grad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="rgb(115,209,255)" />
+                    <stop offset="1" stop-color="rgb(13,107,235)" />
+                  </linearGradient>
+                </defs>
+                <circle cx="48" cy="48" r="45" class="ring-track" />
+                <circle cx="48" cy="48" r="45" class="ring-progress" pathLength="1" />
+              </svg>
+              <div class="ring-inner">
+                <svg class="eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z" /><circle cx="12" cy="12" r="3.2" /></svg>
+                <span id="wash-count">20</span>
+              </div>
+            </div>
+            <p class="wash-title">Rest Your Eyes</p>
+            <p class="wash-detail">The firefighter washed your screen. Look at something far away and blink a few times.</p>
+            <button class="wash-skip" id="wash-skip" type="button">Skip (Esc)</button>
           </div>
         </div>
       </div>

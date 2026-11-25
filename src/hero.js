@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { Firefighter } from './firefighter.js';
 import { APPS, menuTexture, tileTexture, labelCanvas } from './icons.js';
-import { Water } from './water.js';
+import { WaterSim, WaterLayer } from './appwater.js';
 import { loadFirefighter, ModelFirefighter } from './model.js';
 
 const ease = {
@@ -130,7 +130,15 @@ export function initHero(container, ui) {
   shadow.visible = false;
   stage.add(shadow);
 
-  const water = new Water(stage);
+  // The app's water: simulated in menu-bar points, drawn as a screen-space overlay.
+  let sim = new WaterSim();
+  const waterLayer = new WaterLayer(renderer, { border: false });
+  let spray = null; // { x, y, power } in px, while the hose is on
+  // Wet drops running down sprayed apps (2D overlay, like WetDrops in LadderView.swift)
+  const fx = document.createElement('canvas');
+  fx.className = 'hero-fx';
+  container.appendChild(fx);
+  const fxc = fx.getContext('2d');
 
   // ---------- Apps ----------
   const TUCK = new Set(['Tuneful', 'Clippy Jar', 'Starling', 'Wanderer', 'Peek', 'Brew', 'Keycaps', 'Drizzle']);
@@ -142,7 +150,7 @@ export function initHero(container, ui) {
     return {
       app, order, mesh, mat,
       where: 'bar', // bar | carried | flying | helmet | ladder
-      wobble: 0, wobbleV: 0, pop: 1,
+      pop: 1, soak: 0, soakStart: -1, soakLast: -9, dripStart: -9,
       tx: 0, ty: 0, // smoothed target (px) when on the bar
       slot: 0,
     };
@@ -164,7 +172,9 @@ export function initHero(container, ui) {
     camera.near = D / 10;
     camera.far = D * 4;
     camera.updateProjectionMatrix();
-    water.setScale(D * renderer.getPixelRatio());
+    const dprFx = Math.min(devicePixelRatio, 2);
+    fx.width = Math.round(W * dprFx);
+    fx.height = Math.round(H * dprFx);
 
     const mobile = W < 720;
     const m = mobile ? 10 : 24;
@@ -183,7 +193,12 @@ export function initHero(container, ui) {
     L.helmetX = L.x0 + L.w - L.sysW - (mobile ? 34 : 52);
     L.ground = L.barY + 1.05 * L.S + 0.34 * L.S;
     L.firstIconX = L.helmetX - (mobile ? 32 : 48);
-    L.maxIcons = Math.max(3, Math.floor((L.firstIconX - (L.x0 + L.leftW)) / L.gap) + 1);
+    // Like macOS: when the bar is crowded the app's menus give way from the right
+    // (keeping at least 3 icons), never drawn underneath the icons.
+    const iconsFrom = (n) => Math.floor((L.firstIconX - L.gap / 2 - (L.x0 + L.menuEnds[n] + 6)) / L.gap) + 1;
+    L.menuCount = L.menuEnds.length - 1;
+    while (L.menuCount > 1 && iconsFrom(L.menuCount) < 3) L.menuCount--;
+    L.maxIcons = Math.max(0, iconsFrom(L.menuCount));
     L.ladderMax = L.y0 + L.h - 26 - (L.y0 + L.mb);
 
     drawDesk();
@@ -243,14 +258,15 @@ export function initHero(container, ui) {
   }
   function measureMenu() {
     const c = desk.ctx;
+    L.menuEnds = [42]; // left edge after the logo, then after each app menu
     let x = 42;
     if (!L.mobile) {
       MENUS.forEach((t, i) => {
         c.font = menuFont(i === 0 ? 700 : 500);
         x += c.measureText(t).width + 18;
+        L.menuEnds.push(x);
       });
     }
-    L.leftW = x + 6;
     c.font = menuFont(500);
     L.sysW = 16 + c.measureText(clockText()).width + 18 + 26 + (L.mobile ? 0 : 30);
   }
@@ -305,7 +321,7 @@ export function initHero(container, ui) {
     c.fill();
     x += 24;
     if (!L.mobile) {
-      MENUS.forEach((t, i) => {
+      MENUS.slice(0, L.menuCount).forEach((t, i) => {
         c.font = menuFont(i === 0 ? 700 : 500);
         c.fillText(t, x, y0 + mb / 2 + 1);
         x += c.measureText(t).width + 18;
@@ -676,33 +692,128 @@ export function initHero(container, ui) {
     pose = (t) => ff.idle(t);
     await wait(0.1);
 
-    if (!reduced) await sprayTiles(list, gy);
-    pose = (t) => ff.wave(t);
-    setTimeout(() => {
-      if (ladderOpen) pose = (t) => ff.idle(t);
-    }, 1400);
+    if (!reduced) await sprayTiles(list);
+    // done: stands holding the hose, like the app
+    pose = (t) => ff.spray(0.15, 0);
     busy = false;
     ui.hint?.('ladder');
   }
 
-  const nozzleWorld = new THREE.Vector3();
-  async function sprayTiles(list, gy) {
-    await face(1);
-    const order = [...list].sort((a, b) => b.slotPos.y - a.slotPos.y); // bottom up
-    for (const ic of order) {
-      const target = toWorld(ic.slotPos.x, ic.slotPos.y, 10);
-      const dy = ffPx.y - L.S * 0.6 - ic.slotPos.y;
-      const pitch = Math.atan2(dy, Math.abs(ic.slotPos.x - ffPx.x) + 1);
-      pose = (t) => ff.spray(Math.min(1.2, pitch), t);
-      await tween(0.34, () => {
-        ff.root.updateMatrixWorld(true);
-        ff.nozzleTip.getWorldPosition(nozzleWorld);
-        const from = stage.worldToLocal(nozzleWorld.clone());
-        water.shoot(from, target, { count: 5, time: 0.3, spread: L.tile * 0.45, size: L.mobile ? 7 : 11, tag: ic });
-      });
+  // ---------- Spraying the apps (LadderTimeline in LadderView.swift) ----------
+  const AIM_MOVE = 0.28, SETTLE = 0.4, RAISE = 0.5;
+  const pk = () => L.mb / 24; // px per app point
+  function aimAt(x, y) {
+    // turn so the nozzle points at the target; pitch up for targets above
+    const dx = x - ffPx.x;
+    const up = ffPx.y - L.S * 0.5 - y;
+    ff.root.rotation.y = THREE.MathUtils.clamp(Math.atan2(dx, Math.max(up, 20) * 1.35 + 20) * 1.4, -1.35, 1.3);
+    return THREE.MathUtils.clamp(Math.atan2(up, Math.abs(dx) + 30) * 0.9, -0.1, 1.1);
+  }
+  async function sprayTiles(list) {
+    const k = pk();
+    const order = [...list].sort((a, b) => b.slotPos.y - a.slotPos.y); // bottom (nearest) first
+    const dwell = Math.min(0.6, Math.max(0.3, 3.6 / Math.max(order.length, 1)));
+    const at = (i) => order[i].slotPos;
+    // raise the nozzle, turning to the first app
+    const startTurn = ff.root.rotation.y;
+    await tween(RAISE, (q) => {
+      const pitch = aimAt(at(0).x, at(0).y);
+      ff.root.rotation.y = THREE.MathUtils.lerp(startTurn, ff.root.rotation.y, ease.inOut(q));
+      pose = (t) => ff.spray(pitch * q, t);
+    });
+    const t0 = clock;
+    const total = order.length * (AIM_MOVE + dwell) - AIM_MOVE;
+    await tween(total, () => {
+      const t = clock - t0;
+      const step = AIM_MOVE + dwell;
+      const i = Math.min(order.length - 1, Math.max(0, Math.floor((t + AIM_MOVE) / step)));
+      const local = t + AIM_MOVE - i * step;
+      const move = i === 0 ? 1 : ease.inOut(Math.min(1, local / AIM_MOVE));
+      const from = at(Math.max(i - 1, 0)), to = at(i);
+      const wiggle = Math.sin(clock * 38) * 3 * k * move;
+      const x = THREE.MathUtils.lerp(from.x, to.x, move) + wiggle;
+      const y = THREE.MathUtils.lerp(from.y, to.y, move);
+      const ramp = Math.min(1, t / 0.12, (total - t) / 0.12);
+      const pitch = aimAt(x, y);
+      pose = (tt) => ff.spray(pitch, tt);
+      spray = { x, y, power: Math.max(0, ramp) * (0.85 + 0.15 * Math.sin(clock * 30)) };
+    });
+    spray = null;
+    const endTurn = ff.root.rotation.y;
+    await tween(SETTLE, (q) => (ff.root.rotation.y = endTurn * (1 - ease.inOut(q))));
+  }
+
+  const nzA = new THREE.Vector3(), nzB = new THREE.Vector3();
+  /** Nozzle tip on screen (px) and the screen direction it points in. */
+  function nozzleOnScreen() {
+    ff.root.updateMatrixWorld(true);
+    ff.nozzleTip.getWorldPosition(nzA);
+    ff.nozzle.getWorldPosition(nzB);
+    const a = nzA.clone().project(camera), b = nzB.project(camera);
+    const sx = (a.x + 1) / 2 * W, sy = (1 - a.y) / 2 * H;
+    const bx = (b.x + 1) / 2 * W, by = (1 - b.y) / 2 * H;
+    const len = Math.hypot(sx - bx, sy - by);
+    return { x: sx, y: sy, dir: len > 1e-3 ? { x: (sx - bx) / len, y: (sy - by) / len } : null };
+  }
+
+  function tileSoak(ic) {
+    // ramps up 0.1s after water arrives, falls off 0.25s after it stops
+    if (clock - ic.soakLast < 0.12) return Math.min(1, (clock - ic.soakStart) / 0.1);
+    return Math.max(0, 1 - (clock - ic.soakLast) / 0.25);
+  }
+
+  const DROPS = [[-11, 0, 5.5], [5, 0.12, 4.5], [13, 0.3, 3.8]];
+  function drawFx() {
+    const dpr = fx.width / W;
+    fxc.setTransform(dpr, 0, 0, dpr, 0, 0);
+    fxc.clearRect(0, 0, W, H);
+    for (const ic of icons) {
+      if (ic.where !== 'ladder') continue;
+      const prog = (clock - ic.dripStart) / 1.6;
+      if (!(prog > 0 && prog < 1)) continue;
+      ic.mesh.getWorldPosition(nzA);
+      const c = nzA.project(camera);
+      const cx = (c.x + 1) / 2 * W, cy = (1 - c.y) / 2 * H;
+      const s = (L.tile * ic.pop) / 42; // app icons are 42pt
+      fxc.save();
+      fxc.translate(cx, cy);
+      fxc.scale(s, s);
+      // a wet sheen that dries off
+      const g = fxc.createLinearGradient(-21, -21, 21, 21);
+      g.addColorStop(0, 'rgba(255,255,255,0.55)');
+      g.addColorStop(0.5, 'rgba(128,204,255,0.25)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      fxc.globalAlpha = 0.8 * (1 - prog);
+      fxc.globalCompositeOperation = 'screen';
+      fxc.fillStyle = g;
+      fxc.beginPath();
+      fxc.roundRect(-21, -21, 42, 42, 10);
+      fxc.fill();
+      fxc.globalCompositeOperation = 'source-over';
+      for (const [dx, delay, size] of DROPS) {
+        const p = Math.min(Math.max((prog - delay) / (1 - delay), 0), 1);
+        if (p <= 0) continue;
+        const y = -10 + 30 * p * p + (p > 0.75 ? (p - 0.75) * 60 : 0);
+        fxc.globalAlpha = Math.min(1, p * 6) * (p > 0.8 ? (1 - p) / 0.2 : 1);
+        const w = size, h = size * 1.5;
+        const dg = fxc.createLinearGradient(0, y - h / 2, 0, y + h / 2);
+        dg.addColorStop(0, 'rgb(140,224,255)');
+        dg.addColorStop(1, 'rgb(13,107,235)');
+        fxc.fillStyle = dg;
+        fxc.beginPath();
+        fxc.roundRect(dx - w / 2, y - h / 2, w, h, w / 2);
+        fxc.fill();
+        fxc.strokeStyle = 'rgba(5,64,158,0.6)';
+        fxc.lineWidth = 0.6;
+        fxc.stroke();
+        fxc.fillStyle = 'rgba(255,255,255,0.9)';
+        fxc.beginPath();
+        fxc.arc(dx - w * 0.15, y - w * 0.2, w * 0.15, 0, Math.PI * 2);
+        fxc.fill();
+      }
+      fxc.restore();
     }
-    await wait(0.35);
-    await face(0);
+    fxc.globalAlpha = 1;
   }
 
   async function closeLadder(chosen = null) {
@@ -826,7 +937,6 @@ export function initHero(container, ui) {
       if (t && !busy) {
         const px = t.slotPos;
         ui.tooltip?.(t.app.name, px.x + px.side * (L.tile / 2 + 8), px.y, px.side);
-        t.wobbleV += 6;
       } else ui.tooltip?.(null);
     }
   });
@@ -883,20 +993,37 @@ export function initHero(container, ui) {
         ic.mesh.position.set(h.x, h.y + L.icon * 0.3, 60);
         ic.mesh.scale.setScalar(L.icon * 1.25);
       } else if (ic.where === 'ladder') {
-        // damped spring wobble, hanging from a hook at the top
-        ic.wobbleV += (-ic.wobble * 60 - ic.wobbleV * 5) * dt;
-        ic.wobble += ic.wobbleV * dt;
-        ic.mesh.rotation.z = ic.wobble * 0.12 * ic.slotPos.side;
-        const hover = ic === hoverTile ? 1.1 : 1;
-        ic.mesh.scale.setScalar(Math.max(0.001, L.tile * ic.pop * hover));
-        toWorld(ic.slotPos.x, ic.slotPos.y, 10, ic.mesh.position);
+        // being hosed: shakes side to side and shrinks back a little (AppTile in LadderView.swift)
+        const soak = tileSoak(ic);
+        const k = L.mb / 24;
+        ic.mesh.rotation.z = -THREE.MathUtils.degToRad(Math.sin(clock * 42) * 9 * soak);
+        const hover = ic === hoverTile ? 1.12 : 1;
+        ic.mesh.scale.setScalar(Math.max(0.001, L.tile * ic.pop * hover * (1 - 0.06 * soak)));
+        toWorld(ic.slotPos.x + Math.sin(clock * 31) * 2 * soak * k, ic.slotPos.y - 3 * soak * k, 10, ic.mesh.position);
       }
     }
 
-    water.update(dt, (p, ic) => {
-      if (ic && ic.where === 'ladder') ic.wobbleV += 1.4;
-      if (Math.random() < 0.5) water.splash(p, { count: 2, size: L.mobile ? 3 : 4 });
-    });
+    // Water: emit from the nozzle (in app points), step, find which app got hit
+    const k = L.mb / 24;
+    if (spray && spray.power > 0) {
+      const nz = nozzleOnScreen();
+      sim.emit({ x: nz.x / k, y: nz.y / k }, nz.dir, { x: spray.x / k, y: spray.y / k }, spray.power, false, dt);
+    }
+    if (!sim.isEmpty) {
+      const reach = (L.tile / 2 + 8) / k;
+      sim.step(dt, W / k, H / k, null, (x, y) => {
+        for (const ic of icons) {
+          if (ic.where !== 'ladder') continue;
+          if (Math.abs(x - ic.slotPos.x / k) < reach && Math.abs(y - ic.slotPos.y / k) < reach) {
+            if (clock - ic.soakLast > 0.4) {
+              ic.soakStart = clock;
+              ic.dripStart = clock + 0.1;
+            }
+            ic.soakLast = clock;
+          }
+        }
+      });
+    }
 
     // gentle parallax
     pointer.x += (pointer.tx - pointer.x) * smooth * 0.4;
@@ -907,6 +1034,8 @@ export function initHero(container, ui) {
     stage.position.z = reduced ? 0 : -ease.out(scroll) * H * 0.25;
 
     renderer.render(scene, camera);
+    if (!sim.isEmpty) waterLayer.render(sim.particles, { size: { x: W / k, y: H / k } });
+    drawFx();
   }
 
   function setRunning(on) {

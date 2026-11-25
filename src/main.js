@@ -96,27 +96,4 @@ if (stage && webglOK()) {
 
 // ---------- Eye-break demo ----------
 const washStage = document.getElementById('wash-stage');
-if (washStage && webglOK()) {
-  const startBtn = document.getElementById('wash-start');
-  const breakBox = washStage.querySelector('.wash-break');
-  const count = document.getElementById('wash-count');
-  const wash = initWash(washStage, {
-    state(s, seconds) {
-      if (s === 'break') {
-        startBtn.hidden = true;
-        breakBox.hidden = false;
-        count.textContent = String(seconds);
-      } else if (s === 'ending') {
-        breakBox.hidden = true;
-      } else {
-        startBtn.hidden = false;
-        breakBox.hidden = true;
-      }
-    },
-    tick(left) {
-      count.textContent = String(left);
-    },
-  });
-  startBtn.addEventListener('click', () => wash.start());
-  document.getElementById('wash-skip').addEventListener('click', () => wash.stop());
-}
+if (washStage && webglOK()) initWash(washStage);
