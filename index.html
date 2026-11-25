@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ladelo — a tiny firefighter for your Mac menu bar</title>
+  <meta name="description" content="Ladelo tidies your Mac menu bar. Icons you don't use get tucked into one little helmet; drop the ladder to bring any of them back. Built for the new macOS." />
+  <meta name="theme-color" content="#0a0f1d" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="apple-touch-icon" href="/icon.png" />
+  <meta property="og:title" content="Ladelo — a tiny firefighter for your menu bar" />
+  <meta property="og:description" content="Icons you don't use get tucked into one little helmet. Drop the ladder to bring any of them back." />
+  <meta property="og:image" content="/icon.png" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="/"><img src="/icon.png" alt="" width="28" height="28" />Ladelo</a>
+    <nav>
+      <a href="#how">How it works</a>
+      <a href="#breaks">Eye breaks</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="btn btn-small" href="#pricing">Get Ladelo</a>
+  </header>
+
+  <main>
+    <section class="hero" aria-label="Ladelo demo">
+      <div class="hero-stage" id="hero-stage">
+        <div class="hint" id="hero-hint" hidden></div>
+        <div class="tooltip" id="hero-tooltip" hidden></div>
+        <button class="replay" id="hero-replay" type="button" hidden>↺ Watch him tidy again</button>
+        <noscript><p class="noscript">Turn on JavaScript to watch the firefighter tidy up.</p></noscript>
+      </div>
+      <div class="hero-copy">
+        <p class="eyebrow">For the new macOS menu bar</p>
+        <h1>A tiny firefighter<br />for your menu bar.</h1>
+        <p class="lede">Icons you don't use get tucked into one little helmet. Drop the ladder and any of them is one click away.</p>
+        <div class="cta">
+          <a class="btn" href="#download" data-download>Download free trial</a>
+          <a class="btn btn-ghost" href="#pricing">Buy · <s>$9.99</s> $6.99</a>
+        </div>
+        <p class="fine">14 days free · No subscription · Apple silicon &amp; Intel</p>
+      </div>
+    </section>
+
+    <section id="how" class="section">
+      <h2>Three rules a 7‑year‑old could follow.</h2>
+      <ol class="steps">
+        <li>
+          <span class="num">1</span>
+          <h3>Keep what you use</h3>
+          <p>Icons you click stay right where they are on the menu bar.</p>
+        </li>
+        <li>
+          <span class="num">2</span>
+          <h3>Tuck away what you don't</h3>
+          <p>Haven't touched one in a few days? The firefighter hops out, plucks it off the bar and tosses it into the helmet. You watch it happen, so nothing ever just vanishes.</p>
+        </li>
+        <li>
+          <span class="num">3</span>
+          <h3>Bring anything back</h3>
+          <p>Click the helmet (or press <kbd>⌃</kbd><kbd>⌥</kbd><kbd>B</kbd>). The ladder drops, apps hang on both sides. Click one and it returns to the menu bar with its menu already open.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section class="section why">
+      <div>
+        <h2>Why another menu bar manager?</h2>
+        <p>Older tools hide icons by stretching a giant invisible spacer across your menu bar and faking ⌘‑drags to shuffle things around. Recent versions of macOS broke that trick: icons disappear, the cursor gets hijacked, and the spacer itself gets kicked off the bar.</p>
+        <p>Ladelo doesn't move anyone else's icons. It asks macOS itself which apps may show in the menu bar and lets the system do the hiding and re‑laying out. When you pick an app from the ladder, it comes back right next to the helmet, so its menu opens in exactly the right place.</p>
+      </div>
+      <ul class="checks">
+        <li><strong>Hands off other apps.</strong> No fake drags, no stolen cursor.</li>
+        <li><strong>Safety net.</strong> If Ladelo quits or crashes, your full menu bar comes straight back.</li>
+        <li><strong>Featherweight.</strong> About 20&nbsp;MB of memory. The 3D firefighter only loads while he's on stage.</li>
+        <li><strong>Private.</strong> No accounts, no analytics. Nothing about your Mac leaves your Mac.</li>
+      </ul>
+    </section>
+
+    <section id="breaks" class="section breaks">
+      <div class="breaks-copy">
+        <h2>He also makes you rest your eyes.</h2>
+        <p>Every hour (or every 20, 30, 45 or 90 minutes, your call) the screen frosts over and he hoses it down while you look at something far away for 20 seconds. Step away from the Mac and the timer resets on its own.</p>
+        <p class="aside">Try it. Move your pointer over the screen to aim the water.</p>
+      </div>
+      <div class="wash-stage" id="wash-stage">
+        <div class="wash-overlay" id="wash-overlay">
+          <button class="btn" id="wash-start" type="button">Take a 20‑second break</button>
+          <div class="wash-break" hidden>
+            <p class="wash-title">Rest your eyes</p>
+            <p class="wash-detail">Look at something far away and blink a few times.</p>
+            <p class="wash-count"><span id="wash-count">20</span>s</p>
+            <button class="btn btn-ghost btn-small" id="wash-skip" type="button">Skip (Esc)</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section features">
+      <h2>Little things, done properly.</h2>
+      <div class="grid">
+        <article><h3>Pin favourites</h3><p>Right‑click an app on the ladder to pin it to the menu bar for good.</p></article>
+        <article><h3>Set the pace</h3><p>Tuck icons away after 1, 3 or 7 days unused, or never. Or hit “Tidy Up Now”.</p></article>
+        <article><h3>Pause anytime</h3><p>One click shows every icon again, handy for screen sharing.</p></article>
+        <article><h3>Quiet when you want</h3><p>Turn the animations off, and Ladelo respects Reduce Motion automatically.</p></article>
+        <article><h3>Speaks your language</h3><p>English, 简体中文, 繁體中文, 日本語, 한국어, Français and Español.</p></article>
+        <article><h3>Starts with your Mac</h3><p>Launch at login, then forget it's there until you need it.</p></article>
+      </div>
+    </section>
+
+    <section id="pricing" class="section pricing">
+      <h2>Pay once. Keep it.</h2>
+      <div class="price-card">
+        <div class="price-head">
+          <img src="/icon.png" alt="" width="64" height="64" />
+          <div>
+            <h3>Ladelo</h3>
+            <p class="muted">Personal license</p>
+          </div>
+        </div>
+        <p class="price"><span class="now">$6.99</span> <s class="was">$9.99</s></p>
+        <p class="launch">Launch price, for a limited time</p>
+        <ul>
+          <li>Use it on up to 3 of your Macs</li>
+          <li>Free updates for every 1.x release</li>
+          <li>14‑day free trial with every feature</li>
+          <li>30‑day money‑back guarantee</li>
+        </ul>
+        <a class="btn btn-wide" href="#" data-buy>Buy Ladelo</a>
+        <a class="link" href="#download" data-download>or download the free trial</a>
+        <p class="fine">Payments are handled by Paddle, our reseller and Merchant of Record. Prices exclude any sales tax or VAT added at checkout.</p>
+      </div>
+    </section>
+
+    <section id="faq" class="section faq">
+      <h2>Questions</h2>
+      <details>
+        <summary>Which Macs does it run on?</summary>
+        <p>Ladelo is a universal app for Apple silicon and Intel and is built for the latest macOS. Hiding uses the system's own menu bar controls on new versions of macOS and a compatibility mode on older ones. The ladder works everywhere.</p>
+      </details>
+      <details>
+        <summary>Is it a subscription?</summary>
+        <p>No. You pay once and keep the version you bought. Every 1.x update is free.</p>
+      </details>
+      <details>
+        <summary>What permissions does it need?</summary>
+        <p>Accessibility, so it can see which icons are on your menu bar and click them for you. That's it. Ladelo needs no network access to do its job and doesn't collect any data.</p>
+      </details>
+      <details>
+        <summary>Why isn't it on the Mac App Store?</summary>
+        <p>The App Store sandbox doesn't allow apps to manage other apps' menu bar icons. Ladelo is signed with an Apple Developer ID and notarized by Apple, so macOS opens it without warnings.</p>
+      </details>
+      <details>
+        <summary>Can I get a refund?</summary>
+        <p>Yes. If Ladelo isn't for you, ask within 30 days of purchase for a full refund. See the <a href="/refund.html">refund policy</a>.</p>
+      </details>
+      <details>
+        <summary>Does it hide Wi‑Fi, battery or the clock?</summary>
+        <p>No. Apple's own icons are left alone and always stay visible. Ladelo only tidies third‑party apps.</p>
+      </details>
+    </section>
+
+    <section id="download" class="section final">
+      <img src="/icon.png" alt="" width="96" height="96" />
+      <h2>Give your menu bar a firefighter.</h2>
+      <div class="cta">
+        <a class="btn" href="#" data-download>Download free trial</a>
+        <a class="btn btn-ghost" href="#pricing">Buy · $6.99</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>© <span id="year">2026</span> Ladelo</p>
+    <nav>
+      <a href="/terms.html">Terms</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/refund.html">Refunds</a>
+      <a href="mailto:hello@ladelo.app">Contact</a>
+    </nav>
+  </footer>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

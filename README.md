@@ -1,0 +1,31 @@
+# Ladelo Website
+
+Ladelo 的官网。Vite + three.js，没有框架。
+
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # 输出到 dist/，静态文件，任何静态托管都能放
+```
+
+## 结构
+
+| 文件 | 内容 |
+|---|---|
+| `index.html` | 首页：首屏 3D 演示、怎么用、为什么、休息眼睛、功能、价格、FAQ |
+| `terms.html` / `privacy.html` / `refund.html` | Paddle 审核要求的三份政策页 |
+| `src/hero.js` | 首屏：菜单栏被消防员整理，点消防帽放下云梯，点 App 放回菜单栏 |
+| `src/wash.js` | 休息眼睛演示：屏幕起雾，消防员背对镜头用水枪冲干净，指针可以瞄准 |
+| `src/firefighter.js` | 程序生成的低多边形消防员和消防帽，各种动作姿势 |
+| `src/water.js` | 水柱粒子 |
+| `src/icons.js` | 虚构的菜单栏 App 图标（单色版 + 彩色梯子版） |
+
+消防员是用代码拼出来的，没有用 App 里加密保护的 `firefighter.glb`。
+
+## 上线前要补的
+
+- [ ] 政策页里的 `[SELLER LEGAL NAME]` 换成你的真实姓名或公司名（要和 Paddle 账户一致）
+- [ ] 联系邮箱 `hello@ladelo.app` 换成真实可收信的地址
+- [ ] `src/main.js` 里接 Paddle Checkout（`data-buy` 按钮）和下载地址 `DOWNLOAD_URL`
+- [ ] 核对页面上的承诺和 App 一致：3 台 Mac、1.x 免费更新、14 天试用、30 天退款、支持的 macOS 版本
+- [ ] 隐私政策里写了「激活时发送 license key 和匿名设备标识」，以 license 服务的实际实现为准
