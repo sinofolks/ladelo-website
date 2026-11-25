@@ -2,7 +2,7 @@
 // Click the helmet to drop the ladder; click an app on the ladder to bring it back.
 // World units are CSS pixels, origin at the canvas centre, y up.
 import * as THREE from 'three';
-import { Firefighter, makeHelmet } from './firefighter.js';
+import { Firefighter } from './firefighter.js';
 import { APPS, menuTexture, tileTexture, labelCanvas } from './icons.js';
 import { Water } from './water.js';
 import { loadFirefighter, ModelFirefighter } from './model.js';
@@ -46,19 +46,44 @@ export function initHero(container, ui) {
   stage.add(deskMesh);
 
   // ---------- Helmet in the menu bar ----------
+  // The app's own menu bar icon: a template helmet, white on the dark bar.
+  // `helmetModel` pivots at the right end of the brim so it can tip open like the app's.
   const helmet = new THREE.Group();
-  const helmetModel = makeHelmet();
+  const helmetModel = new THREE.Group();
   helmet.add(helmetModel);
   stage.add(helmet);
+  const helmetIcon = labelCanvas(128, 128);
+  const helmetPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshBasicMaterial({ map: helmetIcon.texture, transparent: true, toneMapped: false })
+  );
+  helmetModel.add(helmetPlane);
+  {
+    const img = new Image();
+    img.onload = () => {
+      const c = helmetIcon.ctx;
+      c.drawImage(img, 0, 0, 128, 128);
+      // Template image: keep only the shape, painted white (dark pixels = ink).
+      const d = c.getImageData(0, 0, 128, 128);
+      for (let i = 0; i < d.data.length; i += 4) {
+        const lum = (d.data[i] + d.data[i + 1] + d.data[i + 2]) / 765;
+        d.data[i + 3] = Math.round(d.data[i + 3] * (1 - lum));
+        d.data[i] = d.data[i + 1] = d.data[i + 2] = 255;
+      }
+      c.putImageData(d, 0, 0);
+      helmetIcon.texture.needsUpdate = true;
+    };
+    img.src = '/menubar-helmet.png';
+  }
   const helmetHit = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ visible: false }));
   stage.add(helmetHit);
 
-  const badge = labelCanvas(64, 64);
+  // The count sits right of the helmet as plain text, like the app's button title.
+  const badge = labelCanvas(128, 64);
   const badgeMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(1, 1),
-    new THREE.MeshBasicMaterial({ map: badge.texture, transparent: true, toneMapped: false, depthTest: false })
+    new THREE.MeshBasicMaterial({ map: badge.texture, transparent: true, toneMapped: false })
   );
-  badgeMesh.renderOrder = 5;
   stage.add(badgeMesh);
 
   // ---------- Ladder ----------
@@ -155,7 +180,7 @@ export function initHero(container, ui) {
     };
     L.barY = L.y0 + L.mb / 2;
     measureMenu();
-    L.helmetX = L.x0 + L.w - L.sysW - (mobile ? 22 : 34);
+    L.helmetX = L.x0 + L.w - L.sysW - (mobile ? 34 : 52);
     L.ground = L.barY + 1.05 * L.S + 0.34 * L.S;
     L.firstIconX = L.helmetX - (mobile ? 32 : 48);
     L.maxIcons = Math.max(3, Math.floor((L.firstIconX - (L.x0 + L.leftW)) / L.gap) + 1);
@@ -165,14 +190,19 @@ export function initHero(container, ui) {
     deskMesh.scale.set(W, H, 1);
     deskMesh.position.set(0, 0, -2);
 
-    const hs = L.mb * 2.2;
-    helmetModel.scale.setScalar(hs);
-    helmet.rotation.x = 0.28;
-    helmet.position.copy(toWorld(L.helmetX, L.barY + L.mb * 0.12, 8));
-    helmetHit.scale.set(L.mb * 1.3, L.mb * 1.1, 1);
-    helmetHit.position.copy(toWorld(L.helmetX, L.barY, 12));
-    badgeMesh.scale.set(18, 18, 1);
-    badgeMesh.position.copy(toWorld(L.helmetX + L.mb * 0.48, L.y0 + 6, 30));
+    // Real menu bar: 24pt tall, 18pt icon, 11pt count. Scale to our bar.
+    const k = L.mb / 24;
+    L.helmetSize = 18 * k;
+    helmetPlane.scale.set(L.helmetSize, L.helmetSize, 1);
+    // pivot at the right end of the brim (0.9 across, 0.25 up), as in HelmetIcon.swift
+    helmetPlane.position.set(-L.helmetSize * 0.4, L.helmetSize * 0.25, 0);
+    helmet.position.copy(toWorld(L.helmetX + L.helmetSize * 0.4, L.barY + L.helmetSize * 0.25, 8));
+    L.badgeFont = 11 * k;
+    badgeMesh.scale.set(L.badgeFont * 4, L.badgeFont * 2, 1);
+    badgeMesh.position.copy(toWorld(L.helmetX + L.helmetSize / 2 + 2 + L.badgeFont * 2, L.barY, 8));
+    helmetHit.scale.set(L.helmetSize + L.badgeFont * 2.6, L.mb, 1);
+    helmetHit.position.copy(toWorld(L.helmetX + L.badgeFont * 0.9, L.barY, 12));
+    drawBadge(helmetList().length);
 
     // Ladder: rails and as many rungs as could ever be needed
     const railW = mobile ? 4 : 5;
@@ -228,8 +258,12 @@ export function initHero(container, ui) {
   function drawDesk() {
     const dpr = Math.min(devicePixelRatio, 2);
     const cv = desk.canvas;
-    cv.width = Math.round(W * dpr);
-    cv.height = Math.round(H * dpr);
+    const nw = Math.round(W * dpr), nh = Math.round(H * dpr);
+    if (cv.width !== nw || cv.height !== nh) {
+      cv.width = nw;
+      cv.height = nh;
+      desk.texture.dispose(); // a resized canvas needs a fresh GPU texture
+    }
     const c = desk.ctx;
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
     c.clearRect(0, 0, W, H);
@@ -315,17 +349,12 @@ export function initHero(container, ui) {
 
   function drawBadge(n) {
     const c = badge.ctx;
-    c.clearRect(0, 0, 64, 64);
+    c.clearRect(0, 0, 128, 64);
     if (n > 0) {
-      c.fillStyle = '#ff3b30';
-      c.beginPath();
-      c.arc(32, 32, 30, 0, Math.PI * 2);
-      c.fill();
       c.fillStyle = '#fff';
-      c.font = '700 38px -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif';
-      c.textAlign = 'center';
+      c.font = '600 32px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif';
       c.textBaseline = 'middle';
-      c.fillText(String(n), 32, 35);
+      c.fillText(String(n), 0, 33);
     }
     badge.texture.needsUpdate = true;
   }
@@ -398,19 +427,20 @@ export function initHero(container, ui) {
   }
 
   function helmetLid(open) {
-    const from = helmetModel.rotation.x;
-    const to = open ? -0.7 : 0;
+    // Tip up 16° around the brim's right end and lift a little, like the app does.
+    const from = helmetModel.rotation.z;
+    const to = open ? THREE.MathUtils.degToRad(16) : 0;
     const yFrom = helmetModel.position.y;
-    const yTo = open ? L.mb * 0.35 : 0;
-    return tween(0.2, (k) => {
-      helmetModel.rotation.x = THREE.MathUtils.lerp(from, to, ease.out(k));
+    const yTo = open ? L.helmetSize * 0.08 : 0;
+    return tween(0.16, (k) => {
+      helmetModel.rotation.z = THREE.MathUtils.lerp(from, to, ease.out(k));
       helmetModel.position.y = THREE.MathUtils.lerp(yFrom, yTo, ease.out(k));
     });
   }
   function bounceHelmet() {
     tween(0.35, (k) => {
       const s = 1 + Math.sin(k * Math.PI) * 0.18;
-      helmet.scale.set(s, 1 / s, s);
+      helmet.scale.set(s, 1 / s, 1);
     });
   }
 

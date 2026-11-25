@@ -150,6 +150,7 @@ export function initWash(container, ui) {
     for (const cv of [sharp, blur]) {
       cv.canvas.width = Math.round(W * dpr);
       cv.canvas.height = Math.round(H * dpr);
+      cv.texture.dispose(); // a resized canvas needs a fresh GPU texture
     }
     drawWork(sharp.ctx, sharp.canvas.width, sharp.canvas.height);
     // Cheap, portable blur: draw tiny, scale back up.
