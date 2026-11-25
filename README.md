@@ -16,11 +16,14 @@ npm run build    # 输出到 dist/，静态文件，任何静态托管都能放
 | `terms.html` / `privacy.html` / `refund.html` | Paddle 审核要求的三份政策页 |
 | `src/hero.js` | 首屏：菜单栏被消防员整理，点消防帽放下云梯，点 App 放回菜单栏 |
 | `src/wash.js` | 休息眼睛演示：屏幕起雾，消防员背对镜头用水枪冲干净，指针可以瞄准 |
-| `src/firefighter.js` | 程序生成的低多边形消防员和消防帽，各种动作姿势 |
+| `src/model.js` | 加载真实消防员模型 `public/models/firefighter.glb`，把各段动作对到场景用的姿势上 |
+| `src/firefighter.js` | 用代码拼的备用消防员（模型加载失败时用）、消防帽、水枪 |
 | `src/water.js` | 水柱粒子 |
 | `src/icons.js` | 虚构的菜单栏 App 图标（单色版 + 彩色梯子版） |
 
-消防员是用代码拼出来的，没有用 App 里加密保护的 `firefighter.glb`。
+消防员用的是 App 同一个模型：`public/models/firefighter.glb` 来自 Perch 仓库的 `art/firefighter.glb`，贴图从 4096 缩到 1024（3.5 MB → 1.4 MB）。它放在网站上谁都能直接下载，App 里的加密对这份没有作用。模型加载失败时自动换回代码拼的版本。
+
+换模型后重新生成：用 Python 把 glb 里的贴图取出来，`sips -Z 1024` 缩小后写回（见提交记录），或者用 gltf-transform 的 `resize`。
 
 ## 上线前要补的
 

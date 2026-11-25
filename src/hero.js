@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { Firefighter, makeHelmet } from './firefighter.js';
 import { APPS, menuTexture, tileTexture, labelCanvas } from './icons.js';
 import { Water } from './water.js';
+import { loadFirefighter, ModelFirefighter } from './model.js';
 
 const ease = {
   out: (k) => 1 - Math.pow(1 - k, 3),
@@ -71,9 +72,22 @@ export function initHero(container, ui) {
   let rungs = [];
 
   // ---------- Firefighter ----------
-  const ff = new Firefighter();
+  let ff = new Firefighter();
   ff.root.visible = false;
   stage.add(ff.root);
+  // Swap in the real model once it has loaded (the simple one stays if it can't).
+  const modelReady = loadFirefighter().then((gltf) => {
+    if (!gltf) return;
+    const m = new ModelFirefighter(gltf);
+    m.root.visible = ff.root.visible;
+    m.root.position.copy(ff.root.position);
+    m.root.rotation.copy(ff.root.rotation);
+    m.root.scale.copy(ff.root.scale);
+    stage.remove(ff.root);
+    stage.add(m.root);
+    ff = m;
+    if (import.meta.env.DEV) window.__ff = m;
+  });
   const shadowTex = (() => {
     const c = labelCanvas(64, 64);
     const g = c.ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
@@ -439,9 +453,9 @@ export function initHero(container, ui) {
   }
 
   const handWorld = new THREE.Vector3();
-  function handLocal() {
+  function handLocal(hand = ff.handL) {
     ff.root.updateMatrixWorld(true);
-    ff.handL.getWorldPosition(handWorld);
+    hand.getWorldPosition(handWorld);
     return stage.worldToLocal(handWorld);
   }
 
@@ -453,11 +467,12 @@ export function initHero(container, ui) {
     pose = () => {};
     await tween(0.5, (k) => {
       const up = Math.sin(k * Math.PI);
-      placeFF(ffPx.x, y0 - up * 0.34 * L.S);
+      placeFF(ffPx.x, y0 - up * (ff.jumpLift || 0.34) * L.S);
       ff.reach(up);
       shadow.scale.set(L.S * 0.7 * (1 - up * 0.4), L.S * 0.18 * (1 - up * 0.4), 1);
       if (!got && k > 0.48) {
         got = true;
+        ic.hand = ff.handL;
         ic.where = 'carried';
         retarget();
       }
@@ -470,10 +485,11 @@ export function initHero(container, ui) {
   async function throwIn(ic) {
     await face(0);
     let thrown = false;
+    ic.hand = ff.throwHand || ff.handL;
     pose = () => {};
-    await tween(0.42, (k) => {
+    await tween(ff.throwTime || 0.42, (k) => {
       ff.throwPose(k);
-      if (!thrown && k > 0.55) {
+      if (!thrown && k > (ff.releaseAt || 0.55)) {
         thrown = true;
         flyIntoHelmet(ic);
       }
@@ -507,6 +523,7 @@ export function initHero(container, ui) {
     if (busy) return;
     busy = true;
     ui.hint?.(null);
+    await Promise.race([modelReady, wait(5)]);
     const targets = barList().filter((ic) => TUCK.has(ic.app.name) && ic.mesh.visible);
     const plan = targets.slice(0, L.mobile ? 3 : 6);
     await popOut();
@@ -832,7 +849,7 @@ export function initHero(container, ui) {
         ic.mesh.position.lerp(tmp, smooth);
         ic.mesh.rotation.z = 0;
       } else if (ic.where === 'carried') {
-        const h = handLocal();
+        const h = handLocal(ic.hand || ff.handL);
         ic.mesh.position.set(h.x, h.y + L.icon * 0.3, 60);
         ic.mesh.scale.setScalar(L.icon * 1.25);
       } else if (ic.where === 'ladder') {

@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { Firefighter } from './firefighter.js';
 import { Water } from './water.js';
 import { labelCanvas } from './icons.js';
+import { loadFirefighter, ModelFirefighter } from './model.js';
 
 const BREAK_SECONDS = 20;
 
@@ -111,10 +112,19 @@ export function initWash(container, ui) {
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), screenMat);
   scene.add(screen);
 
-  const ff = new Firefighter();
+  let ff = new Firefighter();
   ff.root.rotation.y = Math.PI; // back to us, facing the screen
   ff.root.visible = false;
   scene.add(ff.root);
+  loadFirefighter().then((gltf) => {
+    if (!gltf) return;
+    const m = new ModelFirefighter(gltf);
+    m.root.scale.copy(ff.root.scale);
+    m.root.rotation.copy(ff.root.rotation);
+    scene.remove(ff.root);
+    scene.add(m.root);
+    ff = m;
+  });
   const water = new Water(scene, { max: 1400, gravity: -900, color: 0x3fa9ff, additive: false });
 
   let W = 1, H = 1, S = 100, sw = 1, sh = 1, rise = 0;

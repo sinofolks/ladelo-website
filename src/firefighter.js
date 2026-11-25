@@ -41,6 +41,23 @@ export function makeHelmet() {
   return g;
 }
 
+/** A hose nozzle pointing along +z; `tip` marks where the water comes out. */
+export function makeNozzle() {
+  const nozzle = new THREE.Group();
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.22, 12), mat(COLORS.dark, { metalness: 0.5 }));
+  barrel.rotation.x = Math.PI / 2;
+  barrel.position.z = 0.1;
+  nozzle.add(barrel);
+  const tipMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.04, 12), mat(COLORS.gold, { metalness: 0.7, roughness: 0.3 }));
+  tipMesh.rotation.x = Math.PI / 2;
+  tipMesh.position.z = 0.22;
+  nozzle.add(tipMesh);
+  const tip = new THREE.Object3D();
+  tip.position.z = 0.25;
+  nozzle.add(tip);
+  return { nozzle, tip };
+}
+
 function limb(radius, length, material) {
   // Pivot at the top, limb hanging down along -y.
   const pivot = new THREE.Group();
@@ -113,18 +130,9 @@ export class Firefighter {
     this.armR.add(this.handR);
 
     // Nozzle, hidden unless spraying
-    this.nozzle = new THREE.Group();
-    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.22, 12), mat(COLORS.dark, { metalness: 0.5 }));
-    barrel.rotation.x = Math.PI / 2;
-    barrel.position.z = 0.1;
-    this.nozzle.add(barrel);
-    const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.04, 12), mat(COLORS.gold, { metalness: 0.7, roughness: 0.3 }));
-    tip.rotation.x = Math.PI / 2;
-    tip.position.z = 0.22;
-    this.nozzle.add(tip);
-    this.nozzleTip = new THREE.Object3D();
-    this.nozzleTip.position.z = 0.25;
-    this.nozzle.add(this.nozzleTip);
+    const nz = makeNozzle();
+    this.nozzle = nz.nozzle;
+    this.nozzleTip = nz.tip;
     this.nozzle.visible = false;
     this.body.add(this.nozzle);
 
